@@ -50,7 +50,7 @@ async function tx(db, storeNames, mode, fn) {
   });
 }
 
-// ------- ZIP parsing via fflate -------
+// ------- ZIP parsing via fflate (robust to IG JSON variants) -------
 async function parseInstagramZip(file) {
   if (!self.fflate) throw new Error('Unzip library not loaded yet. Wait a moment and retry.');
   const buf = new Uint8Array(await file.arrayBuffer());
@@ -61,40 +61,67 @@ async function parseInstagramZip(file) {
     });
   });
 
-  const files = Object.entries(entries)
-    .map(([name, u8]) => [name, new TextDecoder('utf-8').decode(u8)]);
+  const dec = new TextDecoder('utf-8');
+  const files = Object.entries(entries).map(([name, u8]) => {
+    const base = name.split('/').pop().toLowerCase();
+    return { name, base, text: dec.decode(u8) };
+  });
 
-  const jsonTexts = (needle) => files
-    .filter(([n]) => n.toLowerCase().includes(needle) && n.endsWith('.json'))
-    .map(([, txt]) => txt);
+  const followersTxts = files
+    .filter(f => f.base.startsWith('followers') && f.base.endsWith('.json'))
+    .map(f => f.text);
 
-  const followersTxts = jsonTexts('followers');
-  const followingTxts = jsonTexts('following');
+  const followingTxts = files
+    .filter(f => f.base.startsWith('following') && f.base.endsWith('.json')
+      && !f.base.includes('hashtag') && !f.base.includes('pages') && !f.base.includes('channels'))
+    .map(f => f.text);
 
-  if (!followersTxts.length || !followingTxts.length) {
-    throw new Error('Followers/Following JSON not found inside ZIP.');
+  if (!followersTxts.length) {
+    throw new Error('Followers JSON not found. Ensure your export contains Followers & Following (JSON).');
   }
+  if (!followingTxts.length) {
+    throw new Error('Following JSON not found. Ensure your export contains Followers & Following (JSON).');
+  }
+
+  const normalize = (txt) => {
+    let obj = JSON.parse(txt);
+    if (Array.isArray(obj)) return obj;
+    if (obj && typeof obj === 'object') {
+      const arrKey = Object.keys(obj).find(k => Array.isArray(obj[k]));
+      if (arrKey) return obj[arrKey];
+      if (Array.isArray(obj.string_list_data)) return [obj];
+    }
+    return [];
+  };
 
   const followers = [];
   const following = [];
 
-  function pluck(list) {
+  const pluck = (list) => {
     const out = [];
-    for (const item of list) {
+    for (const item of list || []) {
       const sld = item?.string_list_data || [];
       for (const s of sld) {
-        out.push({ username: s.value, ts: s.timestamp ? new Date(s.timestamp * 1000).toISOString() : null });
+        const val = s.value || s.href || s.username || s.title || '';
+        if (!val) continue;
+        let username = val;
+        if (/instagram\.com/i.test(val)) {
+          const m = val.match(/instagram\.com\/([^\/?#]+)/i);
+          if (m) username = m[1];
+        }
+        const ts = s.timestamp ? new Date(s.timestamp * 1000).toISOString() : null;
+        out.push({ username, ts });
       }
     }
     return out;
-  }
+  };
 
   for (const txt of followersTxts) {
-    const arr = JSON.parse(txt);
+    const arr = normalize(txt);
     followers.push(...pluck(arr));
   }
   for (const txt of followingTxts) {
-    const arr = JSON.parse(txt);
+    const arr = normalize(txt);
     following.push(...pluck(arr));
   }
 
@@ -166,7 +193,6 @@ async function computeUnfollowers() {
   const cur = snaps[0], prev = snaps[1];
   const curF = await getSet(STORE_FOLLOWERS, cur.id);
   const prevF = await getSet(STORE_FOLLOWERS, prev.id);
-
   const out = [];
   for (const u of prevF) if (!curF.has(u)) out.push({ username: u, last_seen: prev.taken_at });
   out.sort((a,b) => a.username.localeCompare(b.username));
