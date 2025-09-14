@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>IG Follow Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#111827" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="icons/icon-192.png" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>IG Follow Tracker</h1>
+    <button id="installBtn" hidden>Install</button>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Import a new snapshot</h2>
+      <p class="muted">Get your export: Accounts Center → Your information & permissions → <b>Export your information</b> → Followers & Following → <b>JSON</b> → Download ZIP.</p>
+      <div class="actions">
+        <a class="btn secondary" target="_blank" rel="noopener" href="https://accountscenter.instagram.com/info_and_permissions/dyi/">Open Export Page</a>
+        <label class="btn">
+          <input id="zipInput" type="file" accept=".zip,application/zip" hidden />
+          Upload ZIP
+        </label>
+      </div>
+      <div id="importStatus" class="status"></div>
+    </section>
+
+    <section class="card">
+      <div class="flex-between">
+        <h2>Snapshots</h2>
+        <button id="resetBtn" class="link danger">Reset storage</button>
+      </div>
+      <div id="snapshots"></div>
+    </section>
+
+    <section class="card">
+      <h2>Unfollowers (since last snapshot)</h2>
+      <div id="unfollowers"></div>
+    </section>
+
+    <section class="card">
+      <h2>You follow, they don’t (current)</h2>
+      <div id="notBack"></div>
+    </section>
+
+    <section class="card">
+      <h2>Export CSV</h2>
+      <div class="actions">
+        <button id="csvUnfollowers" class="secondary">Download Unfollowers CSV</button>
+        <button id="csvNotBack" class="secondary">Download Not-Back CSV</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- fflate (zip) from CDN; cached by service worker for offline after first load -->
+  <script defer src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+  <script defer src="app.js" type="module"></script>
+</body>
+</html>
