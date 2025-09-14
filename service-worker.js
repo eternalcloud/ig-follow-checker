@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE = 'ig-follow-tracker-v2';
+const CACHE = 'ig-follow-tracker-v3';
 const ASSETS = [
   './',
   './index.html',

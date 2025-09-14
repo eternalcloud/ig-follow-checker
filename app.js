@@ -219,6 +219,8 @@ const importStatus = document.getElementById('importStatus');
 const snapshotsDiv = document.getElementById('snapshots');
 const unfollowersDiv = document.getElementById('unfollowers');
 const notBackDiv = document.getElementById('notBack');
+const unfollowersCountEl = document.getElementById('unfollowersCount');
+const notBackCountEl = document.getElementById('notBackCount');
 const resetBtn = document.getElementById('resetBtn');
 const csvUnfollowersBtn = document.getElementById('csvUnfollowers');
 const csvNotBackBtn = document.getElementById('csvNotBack');
@@ -257,11 +259,13 @@ async function refreshAll() {
   }
 
   const unf = await computeUnfollowers();
+  if (unfollowersCountEl) unfollowersCountEl.textContent = String(unf.length);
   unfollowersDiv.innerHTML = unf.length
     ? '<div class="list">' + unf.map(x => `<div class="row"><div>${x.username}</div><div class="small">last seen: ${new Date(x.last_seen).toLocaleDateString()}</div></div>`).join('') + '</div>'
     : '<div class="empty">None (need at least two snapshots).</div>';
 
   const nb = await computeNotBack();
+  if (notBackCountEl) notBackCountEl.textContent = String(nb.length);
   notBackDiv.innerHTML = nb.length
     ? '<div class="list">' + nb.map(x => `<div class="row"><div>${x.username}</div><div class="small">${x.followed_at ? 'followed: ' + new Date(x.followed_at).toLocaleDateString() : ''}</div></div>`).join('') + '</div>'
     : '<div class="empty">None (or no current snapshot).</div>';
